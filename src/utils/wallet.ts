@@ -1,4 +1,4 @@
-import detectEthereumProvider from '@metamask/detect-provider'
+import { ethers } from 'ethers'
 import { WalletConnection } from '../types'
 
 // Base Chain configuration
@@ -17,29 +17,29 @@ export const BASE_CHAIN_CONFIG = {
 
 export const connectMetaMask = async (): Promise<WalletConnection> => {
   try {
-    const provider = await detectEthereumProvider()
-    
-    if (!provider) {
+    // Check if MetaMask is installed
+    if (typeof window.ethereum === 'undefined') {
       throw new Error('MetaMask is not installed')
     }
 
+    // Create ethers provider
+    const provider = new ethers.BrowserProvider(window.ethereum)
+    
     // Request account access
-    const accounts = await (window as any).ethereum.request({
-      method: 'eth_requestAccounts',
-    })
-
-    if (accounts.length === 0) {
-      throw new Error('No accounts found')
-    }
-
-    const address = accounts[0]
-    const chainId = await (window as any).ethereum.request({
-      method: 'eth_chainId',
-    })
+    await provider.send('eth_requestAccounts', [])
+    
+    // Get the signer
+    const signer = await provider.getSigner()
+    
+    // Get the address
+    const address = await signer.getAddress()
+    
+    // Get network information
+    const network = await provider.getNetwork()
 
     return {
       address,
-      chainId: parseInt(chainId, 16),
+      chainId: Number(network.chainId),
       isConnected: true,
     }
   } catch (error) {
@@ -50,18 +50,21 @@ export const connectMetaMask = async (): Promise<WalletConnection> => {
 
 export const switchToBaseChain = async (): Promise<void> => {
   try {
-    await (window as any).ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: BASE_CHAIN_CONFIG.chainId }],
-    })
+    if (typeof window.ethereum === 'undefined') {
+      throw new Error('MetaMask is not installed')
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum)
+    
+    await provider.send('wallet_switchEthereumChain', [
+      { chainId: BASE_CHAIN_CONFIG.chainId }
+    ])
   } catch (switchError: any) {
     // This error code indicates that the chain has not been added to MetaMask
     if (switchError.code === 4902) {
       try {
-        await (window as any).ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [BASE_CHAIN_CONFIG],
-        })
+        const provider = new ethers.BrowserProvider(window.ethereum!)
+        await provider.send('wallet_addEthereumChain', [BASE_CHAIN_CONFIG])
       } catch (addError) {
         console.error('Error adding Base Chain to MetaMask:', addError)
         throw addError
@@ -72,9 +75,9 @@ export const switchToBaseChain = async (): Promise<void> => {
   }
 }
 
-export const getWalletProvider = (): any => {
-  if (typeof window !== 'undefined' && (window as any).ethereum) {
-    return (window as any).ethereum
+export const getWalletProvider = (): ethers.BrowserProvider | null => {
+  if (typeof window !== 'undefined' && window.ethereum) {
+    return new ethers.BrowserProvider(window.ethereum)
   }
   return null
 }
@@ -85,6 +88,38 @@ export const formatAddress = (address: string): string => {
 }
 
 export const isValidAddress = (address: string): boolean => {
-  // Simple address validation - in production you'd use ethers.isAddress
-  return /^0x[a-fA-F0-9]{40}$/.test(address)
+  return ethers.isAddress(address)
+}
+
+export const getBalance = async (address: string): Promise<string> => {
+  try {
+    const provider = getWalletProvider()
+    if (!provider) {
+      throw new Error('No wallet provider available')
+    }
+    
+    const balance = await provider.getBalance(address)
+    return ethers.formatEther(balance)
+  } catch (error) {
+    console.error('Error getting balance:', error)
+    throw error
+  }
+}
+
+export const getCurrentNetwork = async (): Promise<{ name: string; chainId: number }> => {
+  try {
+    const provider = getWalletProvider()
+    if (!provider) {
+      throw new Error('No wallet provider available')
+    }
+    
+    const network = await provider.getNetwork()
+    return {
+      name: network.name,
+      chainId: Number(network.chainId)
+    }
+  } catch (error) {
+    console.error('Error getting network:', error)
+    throw error
+  }
 } 

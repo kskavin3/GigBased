@@ -28,6 +28,10 @@ const ProjectListingSchema = new mongoose.Schema({
     type: String,
     required: true
   }],
+  projectType: {
+    type: String,
+    required: true
+  },
   location: {
     type: String,
     default: 'Remote'
@@ -41,6 +45,52 @@ const ProjectListingSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'closed', 'draft'],
     default: 'draft'
+  },
+  timeline: {
+    startDate: {
+      type: String,
+      required: true
+    },
+    endDate: {
+      type: String,
+      required: true
+    },
+    milestones: [{
+      title: {
+        type: String,
+        required: true
+      },
+      description: {
+        type: String,
+        required: true
+      },
+      dueDate: {
+        type: String,
+        required: true
+      },
+      timeInWeeks: {
+        type: Number,
+        required: true,
+        min: 1
+      },
+      budgetPercentage: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 100
+      },
+      approvalTime: {
+        type: Number,
+        required: true,
+        min: 24,
+        max: 72
+      },
+      stageType: {
+        type: String,
+        required: true,
+        enum: ['Documentation', 'Code Submission', 'Approval']
+      }
+    }]
   },
   clientId: {
     type: String,

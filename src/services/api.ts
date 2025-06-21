@@ -9,11 +9,18 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Include cookies in requests
 })
 
 // Request interceptor to add auth token if available
 api.interceptors.request.use((config) => {
-  // Add wallet address or auth token if needed
+  // Add auth token if available
+  const token = localStorage.getItem('authToken')
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`
+  }
+  
+  // Add wallet address if needed
   const walletAddress = localStorage.getItem('walletAddress')
   if (walletAddress) {
     config.headers['X-Wallet-Address'] = walletAddress
@@ -47,10 +54,25 @@ export const projectListingsAPI = {
     budget: number
     duration: string
     skillsRequired: string[]
+    projectType: string
     location?: string
     urgency?: 'low' | 'medium' | 'high'
+    timeline: {
+      startDate: string
+      endDate: string
+      milestones: Array<{
+        title: string
+        description: string
+        dueDate: string
+        timeInWeeks: number
+        budgetPercentage: number
+        approvalTime: number
+        stageType: 'Documentation' | 'Code Submission' | 'Approval'
+      }>
+    }
     clientId: string
     clientWallet: string
+    status?: 'draft' | 'active'
   }) => api.post('/project-listings', data),
   
   // Update a project listing
@@ -122,6 +144,161 @@ export const projectsAPI = {
     transactionHash: string
     milestone?: string
   }) => api.post(`/projects/${id}/payments`, data),
+}
+
+// Clients API
+export const clientsAPI = {
+  // Register new client
+  register: (data: {
+    email: string
+    password: string
+    githubUsername: string
+    walletAddress: string
+    authMethod?: string
+  }) => api.post('/clients/register', data),
+  
+  // Login client
+  login: (data: {
+    email: string
+    password: string
+  }) => api.post('/clients/login', data),
+  
+  // Logout client
+  logout: () => api.post('/clients/logout'),
+  
+  // Get client profile
+  getProfile: () => api.get('/clients/profile'),
+  
+  // Update client profile
+  updateProfile: (data: {
+    profile?: {
+      firstName?: string
+      lastName?: string
+      company?: string
+      bio?: string
+      avatar?: string
+      location?: string
+      website?: string
+    }
+    preferences?: {
+      notifications?: {
+        email?: boolean
+        push?: boolean
+      }
+      currency?: string
+      timezone?: string
+    }
+  }) => api.put('/clients/profile', data),
+  
+  // Delete client account
+  deleteAccount: () => api.delete('/clients/account'),
+}
+
+// Dashboard API
+export const dashboardAPI = {
+  // Get dashboard statistics
+  getStats: () => api.get('/dashboard/stats'),
+}
+
+// Developers API
+export const developersAPI = {
+  // Register new developer
+  register: (data: {
+    email: string
+    password: string
+    githubUsername: string
+    walletAddress: string
+    authMethod?: string
+  }) => api.post('/developers/register', data),
+  
+  // Login developer
+  login: (data: {
+    email: string
+    password: string
+  }) => api.post('/developers/login', data),
+  
+  // Logout developer
+  logout: () => api.post('/developers/logout'),
+  
+  // Get developer profile
+  getProfile: () => api.get('/developers/profile'),
+  
+  // Update developer profile
+  updateProfile: (data: {
+    profile?: {
+      firstName?: string
+      lastName?: string
+      bio?: string
+      avatar?: string
+      location?: string
+      website?: string
+      portfolio?: string
+      linkedIn?: string
+      yearsOfExperience?: number
+      hourlyRate?: number
+      availability?: string
+    }
+    skills?: {
+      languages?: string[]
+      frameworks?: string[]
+      tools?: string[]
+      specializations?: string[]
+    }
+    preferences?: {
+      notifications?: {
+        email?: boolean
+        push?: boolean
+      }
+      currency?: string
+      timezone?: string
+      projectTypes?: string[]
+      minBudget?: number
+      maxBudget?: number
+    }
+  }) => api.put('/developers/profile', data),
+  
+  // Apply to project listing
+  applyToProject: (listingId: string, data: {
+    proposal: string
+    proposedBudget?: number
+  }) => api.post(`/developers/apply/${listingId}`, data),
+  
+  // Delete developer account
+  deleteAccount: () => api.delete('/developers/account'),
+}
+
+// Developer Dashboard API
+export const developerDashboardAPI = {
+  // Get developer dashboard statistics
+  getStats: () => api.get('/dev/dashboard/stats'),
+  
+  // Get available project listings
+  getListings: (params?: {
+    page?: number
+    limit?: number
+    skills?: string
+    projectType?: string
+    budget?: string
+    urgency?: string
+  }) => api.get('/dev/dashboard/listings', { params }),
+  
+  // Get developer applications
+  getApplications: (params?: {
+    page?: number
+    limit?: number
+    status?: string
+  }) => api.get('/dev/dashboard/applications', { params }),
+  
+  // Get developer projects
+  getProjects: (params?: {
+    page?: number
+    limit?: number
+    status?: string
+  }) => api.get('/dev/dashboard/projects', { params }),
+  
+  // Get dashboard analytics over time
+  getAnalytics: (period: '7d' | '30d' | '90d' | '1y' = '30d') => 
+    api.get('/dashboard/analytics', { params: { period } }),
 }
 
 // Health check

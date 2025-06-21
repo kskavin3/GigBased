@@ -56,18 +56,41 @@ const createProjectListing = async (req, res) => {
       budget,
       duration,
       skillsRequired,
+      projectType,
       location,
       urgency,
+      timeline,
       clientId,
-      clientWallet
+      clientWallet,
+      status
     } = req.body;
 
     // Validate required fields
-    if (!title || !description || !budget || !duration || !skillsRequired || !clientId || !clientWallet) {
+    if (!title || !description || !budget || !duration || !skillsRequired || !projectType || !timeline || !clientId || !clientWallet) {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
       });
+    }
+
+    // Validate timeline structure
+    if (!timeline.startDate || !timeline.endDate || !timeline.milestones || timeline.milestones.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid timeline data'
+      });
+    }
+
+    // Validate each milestone
+    for (const milestone of timeline.milestones) {
+      if (!milestone.title || !milestone.description || !milestone.dueDate || 
+          !milestone.timeInWeeks || !milestone.budgetPercentage || 
+          !milestone.approvalTime || !milestone.stageType) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid milestone data'
+        });
+      }
     }
 
     const listing = new ProjectListing({
@@ -77,11 +100,13 @@ const createProjectListing = async (req, res) => {
       currency: 'ETH',
       duration,
       skillsRequired: Array.isArray(skillsRequired) ? skillsRequired : skillsRequired.split(',').map(s => s.trim()),
+      projectType,
       location: location || 'Remote',
       urgency: urgency || 'medium',
+      timeline,
       clientId,
       clientWallet,
-      status: 'draft'
+      status: status || 'draft'
     });
 
     const savedListing = await listing.save();
